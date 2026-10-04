@@ -4,7 +4,7 @@
    Options : --force (re-télécharge même si img/athletes/<id>.jpg existe)   --no-name (pas de recherche par nom)
    - 1re passe : identifiant FIS (propriété Wikidata P2772) -> image P18.  2e passe : recherche par nom (skieur avec image).
    - Les photos déjà présentes (ajoutées à la main) ne sont jamais écrasées, sauf --force.
-   - Écrit img/athletes/<id>.jpg (240 px, carré, cadré en haut), tools/photo-credits.json et credits.html (auteurs + licences). */
+   - Écrit img/athletes/<id>.jpg (240 px de large, proportions conservées : le cadrage se fait à l'affichage, tête en haut), tools/photo-credits.json et credits.html (auteurs + licences). */
 const fs = require('fs');
 const path = require('path');
 const data = require('../js/athletes.js');
@@ -75,7 +75,7 @@ async function save(a, file, how, credits) {
   const info = await commonsInfo(file);
   if (!info) return false;
   const buf = await http(info.thumb, { headers: { 'User-Agent': UA } }, true);
-  const jpg = await sharp(buf).resize(240, 240, { fit: 'cover', position: 'top' }).flatten({ background: '#eee5cf' }).jpeg({ quality: 82 }).toBuffer();
+  const jpg = await sharp(buf).resize(240, 320, { fit: 'inside', withoutEnlargement: true }).flatten({ background: '#eee5cf' }).jpeg({ quality: 82 }).toBuffer();
   fs.writeFileSync(path.join(outDir, `${a.id}.jpg`), jpg);
   credits[a.id] = { name: a.name, author: info.author, license: info.license, page: info.page, how };
   return true;

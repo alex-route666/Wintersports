@@ -103,7 +103,7 @@ button, select, input { font: inherit; color: inherit; }
 .avatar--empty { background: transparent; border-style: dashed; border-color: var(--filet); }
 .avatar__in { font-family: var(--display); font-weight: 700; font-size: .85rem; color: var(--neige); }
 .avatar--sm .avatar__in { font-size: .68rem; }
-.avatar__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+.avatar__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0%; }
 .avatar.is-off { filter: grayscale(1) contrast(.95); opacity: .7; }
 
 /* ---------- Forfait (session) ---------- */
