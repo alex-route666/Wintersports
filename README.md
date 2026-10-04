@@ -29,9 +29,17 @@ Page statique, sans connexion Google ni base de données pour l'instant.
 - `js/data.js` : calendrier, desks, sessions, barème.
 - `js/game.js` : règles du jeu (points, bonus, contrainte « une fois par desk », deadlines).
 - `js/demo.js` : skieurs, joueurs, choix et résultats **fictifs**.
-- `js/app.js`, `css/style.css` : interface.
+- `js/app.js`, `css/style.css` : interface. Typographies : Bricolage Grotesque et Instrument Sans (Google Fonts).
 
 Tests des règles : `node tests/game.test.js`.
+
+## Photos des skieurs
+
+Déposer une photo par skieur dans `img/athletes/`, nommée avec l'identifiant du skieur : le nom sans accents, en minuscules, séparé par des tirets, au format `.jpg`. Exemples : `marco-odermatt.jpg`, `lara-gut-behrami.jpg`.
+
+- Format conseillé : carré ou portrait, visage centré en haut, 300 × 300 px minimum.
+- Sans fichier, l'interface affiche les initiales sur fond de couleur (bleu pour les messieurs, rouge pour les dames).
+- La photo est en couleur pour un skieur déjà choisi et en noir et blanc s'il est encore libre (onglet « Athlètes pris »).
 
 ## À venir
 

@@ -4,13 +4,15 @@
   const D = window.SKI_DATA, G = window.SKI_GAME, DEMO = window.SKI_DEMO;
   const TZ = 'Europe/Paris';
   const STORE = 'skigame.maquette.picks';
+  const PHOTO_DIR = 'img/athletes/'; // une photo par skieur : img/athletes/<id>.jpg (voir README)
 
   const ATH = {};
   ['M', 'W'].forEach((g) => DEMO.ATHLETES[g].forEach((a) => { ATH[a.id] = Object.assign({ gender: g }, a); }));
 
+  const freshSubs = () => ({ 1: 'mine', 2: 'mine', 3: 'mine', 0: 'mine' });
   const state = {
     tab: 'next',
-    sub: { 1: 'mine', 2: 'mine', 3: 'mine', 0: 'mine' },
+    sub: freshSubs(),
     sim: null,
     demo: false,
     players: [{ id: DEMO.ME, name: 'Alexandre' }],
@@ -25,24 +27,28 @@
   const now = () => state.sim || new Date();
   const fmt = (opts) => new Intl.DateTimeFormat('fr-FR', Object.assign({ timeZone: TZ }, opts));
   const F_DAY = fmt({ weekday: 'short', day: 'numeric', month: 'short' });
-  const F_LONG = fmt({ weekday: 'long', day: 'numeric', month: 'long' });
+  const F_WD = fmt({ weekday: 'short' });
+  const F_MO = fmt({ month: 'short' });
+  const F_NUM = fmt({ day: 'numeric' });
   const F_HOUR = fmt({ hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   const F_SHORT = fmt({ day: 'numeric', month: 'short' });
-  const dayOf = (date) => F_DAY.format(G.parisInstant(date, '12:00'));
-  const shortOf = (date) => F_SHORT.format(G.parisInstant(date, '12:00'));
-  const deadlineText = (d) => `${F_LONG.format(d)} à ${F_HOUR.format(d).replace(':', ' h ')}`.replace(' h 00', ' h');
+  const at = (date) => G.parisInstant(date, '12:00');
+  const dayOf = (date) => F_DAY.format(at(date));
+  const shortOf = (date) => F_SHORT.format(at(date));
+  const hourText = (d) => { const [h, m] = F_HOUR.format(d).split(':'); return m === '00' ? `${+h} h` : `${+h} h ${m}`; };
+  const dlShort = (d) => `${F_DAY.format(d)} à ${hourText(d)}`;
   const plural = (n, one, many) => `${n} ${n > 1 ? many : one}`;
   const surname = (name) => { const p = name.split(' '); return p.length > 1 ? `${p[0][0]}. ${p.slice(1).join(' ')}` : name; };
   const ordinal = (n) => (n === 1 ? '1er' : `${n}e`);
-  const playerName = (id) => (state.players.find((p) => p.id === id) || { name: id }).name;
   const myPicks = () => state.picks[state.me] || (state.picks[state.me] = {});
-  const deskKeyOf = (session) => session.desk; // 0 pour les Mondiaux
 
-  const allSessions = () => [...D.SESSIONS, D.WORLDS]
-    .sort((a, b) => G.sessionDeadline(a) - G.sessionDeadline(b));
+  const allSessions = () => [...D.SESSIONS, D.WORLDS].sort((a, b) => G.sessionDeadline(a) - G.sessionDeadline(b));
   const scopeSessions = (key) => (key === 0 ? [D.WORLDS] : D.SESSIONS.filter((s) => s.desk === key));
   const locked = (session) => G.sessionState(session, now()) !== 'ouverte';
   const visible = (playerId, session) => playerId === state.me || locked(session);
+  const sortedRaces = (session) => G.sessionRaces(session)
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time) || a.gender.localeCompare(b.gender));
+  const upcomingSession = () => allSessions().find((s) => G.sessionState(s, now()) !== 'terminée');
 
   function load() {
     try {
@@ -59,6 +65,7 @@
   const discLabel = (r) => D.DISC[r.disc].fr + (r.sub ? ' ' + r.sub : '');
   const genderLabel = (r) => (r.gender === 'M' ? 'Messieurs' : 'Dames');
   const placeLabel = (r) => (r.kind === 'mondial' ? 'Crans-Montana' : r.place);
+  const raceTag = (r) => `${placeLabel(r)} ${D.DISC[r.disc].short}${r.sub || ''}`;
   function discBadge(r) {
     const mult = r.mult > 1
       ? `<span class="mult" title="${r.kind === 'mondial' ? 'Barème ×3 aux Mondiaux' : 'Barème ×2 pour les finales'}">×${r.mult}</span>` : '';
@@ -68,92 +75,97 @@
     const s = G.sessionState(session, now());
     return `<span class="state state--${s.replace(' ', '-')}">${s === 'ouverte' ? 'Choix ouverts' : s === 'en cours' ? 'Choix verrouillés' : 'Terminée'}</span>`;
   }
-  function avatar(a, on) {
+  /** Avatar : initiales par défaut, photo par-dessus si le fichier existe (sinon l'image est retirée). */
+  function avatar(a, on, size) {
     const initials = a.name.split(' ').map((w) => w[0]).slice(0, 2).join('');
-    return `<span class="avatar avatar--${a.gender}${on ? '' : ' is-off'}" aria-hidden="true">${esc(initials)}</span>`;
+    return `<span class="avatar avatar--${a.gender}${size ? ' avatar--' + size : ''}${on === false ? ' is-off' : ''}" aria-hidden="true"><span class="avatar__in">${esc(initials)}</span><img class="avatar__img" src="${PHOTO_DIR}${a.id}.jpg" alt="" loading="lazy"></span>`;
   }
-  const pts = (n) => (n === null ? '' : `${n} pt${n > 1 ? 's' : ''}`);
+  const avatarOf = (id, size) => (ATH[id] ? avatar(ATH[id], true, size) : '');
+  const nameOf = (id) => (ATH[id] ? ATH[id].name : id);
 
-  function podium(raceId) {
+  function winnerOf(raceId) {
     const res = state.results[raceId];
-    if (!res) return '';
-    const ranked = res.filter((e) => !e.status).sort((a, b) => a.rank - b.rank).slice(0, 3);
-    return ranked.map((e) => `${ordinal(e.rank)} ${esc(ATH[e.ath] ? ATH[e.ath].name : e.ath)}`).join(', ');
+    const w = res && res.find((e) => !e.status && e.rank === 1);
+    return w ? nameOf(w.ath) : '';
   }
 
   /* ---------- Sélecteurs de choix ---------- */
   function options(race, session, slot) {
     const picks = myPicks();
-    const used = G.usedInDesk(deskKeyOf(session), race.gender, picks, race.id);
+    const used = G.usedInDesk(session.desk, race.gender, picks, race.id);
     const cur = picks[race.id] || {};
-    const list = DEMO.ATHLETES[race.gender];
-    const head = `<option value="">${slot === 'a' ? 'Choisir un skieur' : 'Aucun remplaçant'}</option>`;
-    return head + list.map((a) => {
+    const head = `<option value="">${slot === 'a' ? 'Choisir un skieur' : 'Remplaçant (facultatif)'}</option>`;
+    return head + DEMO.ATHLETES[race.gender].map((a) => {
       const isCur = cur[slot] === a.id;
       const taken = used.has(a.id);
       const dis = !isCur && (taken || (slot === 'b' && cur.a === a.id));
-      const note = taken && slot === 'a' ? ', déjà pris' : '';
-      return `<option value="${a.id}"${isCur ? ' selected' : ''}${dis ? ' disabled' : ''}>${a.rank}. ${esc(a.name)} (${a.nat}${note})</option>`;
+      return `<option value="${a.id}"${isCur ? ' selected' : ''}${dis ? ' disabled' : ''}>${a.rank}. ${esc(a.name)} (${a.nat}${taken && slot === 'a' ? ', déjà pris' : ''})</option>`;
     }).join('');
   }
   function pickEditor(race, session) {
     const label = `${placeLabel(race)}, ${genderLabel(race)}, ${discLabel(race)}`;
     const cur = myPicks()[race.id] || {};
+    const face = cur.a ? avatarOf(cur.a) : `<span class="avatar avatar--empty" aria-hidden="true"></span>`;
     return `<div class="pickbox">
-      <label class="sr" for="pa-${race.id}">Skieur, ${esc(label)}</label>
-      <select id="pa-${race.id}" class="pick" data-race="${race.id}" data-slot="a">${options(race, session, 'a')}</select>
-      <label class="pickbox__sub" for="pb-${race.id}">Remplaçant</label>
-      <select id="pb-${race.id}" class="pick pick--sub" data-race="${race.id}" data-slot="b"${cur.a ? '' : ' disabled'}>${options(race, session, 'b')}</select>
+      ${face}
+      <div class="pickbox__sel">
+        <label class="sr" for="pa-${race.id}">Skieur, ${esc(label)}</label>
+        <select id="pa-${race.id}" class="pick" data-race="${race.id}" data-slot="a">${options(race, session, 'a')}</select>
+        <label class="sr" for="pb-${race.id}">Remplaçant, ${esc(label)}</label>
+        <select id="pb-${race.id}" class="pick pick--sub" data-race="${race.id}" data-slot="b"${cur.a ? '' : ' disabled'}>${options(race, session, 'b')}</select>
+      </div>
     </div>`;
   }
   function pickSummary(playerId, race) {
     const p = (state.picks[playerId] || {})[race.id];
     if (!p || !p.a) return '<span class="none">Aucun choix</span>';
-    const main = ATH[p.a];
     const eff = G.effectiveAthlete(p, state.results, race.id);
-    let out = `<span class="who">${esc(main ? main.name : p.a)}</span>`;
-    if (p.b && eff === p.b) out = `<s class="who who--out">${esc(main ? main.name : p.a)}</s> <span class="who">${esc(ATH[p.b].name)}</span> <em class="sub">remplaçant</em>`;
-    else if (p.b) out += ` <em class="sub">remplaçant ${esc(ATH[p.b].name)}</em>`;
-    return out;
+    const swapped = p.b && eff === p.b;
+    const text = swapped
+      ? `<span class="who"><s class="who--out">${esc(nameOf(p.a))}</s> ${esc(nameOf(p.b))}</span><span class="sub">Remplaçant en piste</span>`
+      : `<span class="who">${esc(nameOf(p.a))}</span>${p.b ? `<span class="sub">Remplaçant : ${esc(nameOf(p.b))}</span>` : ''}`;
+    return `<div class="pickline">${avatarOf(eff)}<div class="pickline__txt">${text}</div></div>`;
   }
   function outcome(race, playerId) {
     const res = state.results[race.id];
-    if (!res) return '<span class="soon">Résultat à venir</span>';
-    const sc = G.scoreRace(race, (state.picks[playerId] || {})[race.id], state.results);
-    const p = (state.picks[playerId] || {})[race.id];
-    const eff = p && G.effectiveAthlete(p, state.results, race.id);
+    if (!res) return locked(sessionOf(race)) ? '<span class="soon">En attente</span>' : '';
+    const pk = (state.picks[playerId] || {})[race.id];
+    const sc = G.scoreRace(race, pk, state.results);
+    const eff = pk && G.effectiveAthlete(pk, state.results, race.id);
     const e = eff && res.find((x) => x.ath === eff);
-    let how = '';
-    if (e && e.status) how = e.status;
-    else if (e) how = ordinal(e.rank);
-    return `<span class="score ${sc > 0 ? 'score--on' : 'score--off'}">${sc > 0 ? '+' : ''}${sc} pt${sc > 1 ? 's' : ''}</span>${how ? ` <span class="how">${how}</span>` : ''}`;
+    const how = e ? (e.status || ordinal(e.rank)) : '';
+    const win = winnerOf(race.id);
+    return `<div class="out"><span class="pill ${sc > 0 ? 'pill--on' : 'pill--off'}">${sc > 0 ? '+' : ''}${sc}</span>${how ? `<span class="rank">${how}</span>` : ''}</div>
+      ${win ? `<span class="winner">Vainqueur ${esc(surname(win))}</span>` : ''}`;
   }
+  const sessionOf = (race) => [...D.SESSIONS, D.WORLDS].find((s) => s.races.includes(race.id));
 
   /* ---------- Courses d'une session (vue « Mon desk ») ---------- */
   function raceRow(race, session) {
-    const open = !locked(session);
-    const winners = podium(race.id);
+    const d = at(race.date);
     return `<li class="race">
-      <div class="race__when"><span class="race__day">${dayOf(race.date)}</span><span class="race__place">${esc(placeLabel(race))}</span></div>
-      <div class="race__what"><span class="gender gender--${race.gender}">${genderLabel(race)}</span> ${discBadge(race)}</div>
-      <div class="race__pick">${open ? pickEditor(race, session) : pickSummary(state.me, race)}</div>
-      <div class="race__out">${outcome(race, state.me)}${winners ? `<span class="podium">${winners}</span>` : ''}</div>
+      <div class="race__date"><span class="race__num">${F_NUM.format(d)}</span><span class="race__mo">${F_WD.format(d)} ${F_MO.format(d)}</span></div>
+      <div class="race__info"><strong class="race__place">${esc(placeLabel(race))}</strong>
+        <span class="race__tags"><span class="gender gender--${race.gender}">${genderLabel(race)}</span>${discBadge(race)}</span></div>
+      <div class="race__pick">${locked(session) ? pickSummary(state.me, race) : pickEditor(race, session)}</div>
+      <div class="race__out">${outcome(race, state.me)}</div>
     </li>`;
   }
   function sessionCard(session, indexLabel) {
-    const races = G.sessionRaces(session).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time) || a.gender.localeCompare(b.gender));
+    const races = sortedRaces(session);
     const dl = G.sessionDeadline(session);
-    const mine = G.sessionScore(session, myPicks(), state.results);
     const n = races.filter((r) => (myPicks()[r.id] || {}).a).length;
     const open = !locked(session);
-    const unknown = races.some((r) => !r.timeKnown);
+    const mine = G.sessionScore(session, myPicks(), state.results);
     return `<article class="session" id="s-${session.id}">
       <header class="session__head">
         <div>
           <h3 class="session__name">${esc(session.name)}</h3>
-          <p class="session__meta">${indexLabel}${indexLabel ? ', ' : ''}${plural(races.length, 'course', 'courses')}, deadline ${deadlineText(dl)}${unknown ? ' (heure à confirmer)' : ''}</p>
+          <p class="session__meta">${indexLabel ? indexLabel + ', ' : ''}deadline ${dlShort(dl)}</p>
         </div>
-        <div class="session__side">${stateBadge(session)}${open ? `<span class="count${n === races.length ? ' count--ok' : ''}">${n} / ${races.length} choisis</span>` : `<span class="count count--pts">${mine} pts</span>`}</div>
+        <div class="session__side">${stateBadge(session)}${open
+    ? `<span class="count${n === races.length ? ' count--ok' : ''}">${n}/${races.length} choisis</span>`
+    : `<span class="count count--pts">${mine} pts</span>`}</div>
       </header>
       <ul class="races">${races.map((r) => raceRow(r, session)).join('')}</ul>
     </article>`;
@@ -161,51 +173,50 @@
 
   /* ---------- Récap des joueurs ---------- */
   function recapTable(session) {
-    const races = G.sessionRaces(session).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time) || a.gender.localeCompare(b.gender));
+    const races = sortedRaces(session);
     const head = state.players.map((p) => `<th scope="col" class="${p.id === state.me ? 'me' : ''}">${esc(p.name)}</th>`).join('');
     const rows = races.map((r) => {
       const cells = state.players.map((p) => {
         const pk = (state.picks[p.id] || {})[r.id];
-        if (!pk || !pk.a) return `<td class="${p.id === state.me ? 'me' : ''}"><span class="none">Aucun choix</span></td>`;
+        const cls = p.id === state.me ? 'me' : '';
+        if (!pk || !pk.a) return `<td class="${cls}"><span class="none">Aucun choix</span></td>`;
         const eff = G.effectiveAthlete(pk, state.results, r.id);
         const sc = G.scoreRace(r, pk, state.results);
-        const sub = eff !== pk.a ? ' <em class="sub">rempl.</em>' : '';
-        return `<td class="${p.id === state.me ? 'me' : ''}"><span class="who" title="${esc(ATH[eff] ? ATH[eff].name : eff)}">${esc(surname(ATH[eff] ? ATH[eff].name : eff))}</span>${sub}${sc === null ? '' : `<span class="cellpts ${sc > 0 ? 'score--on' : 'score--off'}">${sc}</span>`}</td>`;
+        return `<td class="${cls}"><div class="cell">${avatarOf(eff, 'sm')}<div class="cell__txt"><span class="who" title="${esc(nameOf(eff))}">${esc(surname(nameOf(eff)))}</span>${eff !== pk.a ? '<span class="sub">Remplaçant</span>' : ''}${sc === null ? '' : `<span class="cellpts ${sc > 0 ? 'on' : 'off'}">${sc > 0 ? '+' : ''}${sc}</span>`}</div></div></td>`;
       }).join('');
-      return `<tr><th scope="row"><span class="rowhead__day">${dayOf(r.date)}</span> ${esc(placeLabel(r))}<br>${genderLabel(r)} ${discBadge(r)}</th>${cells}</tr>`;
+      return `<tr><th scope="row"><span class="rowhead__day">${dayOf(r.date)}</span> ${esc(placeLabel(r))}<br><span class="gender gender--${r.gender}">${genderLabel(r)}</span>${discBadge(r)}</th>${cells}</tr>`;
     }).join('');
-    const totals = state.players.map((p) => `<td class="${p.id === state.me ? 'me' : ''}"><strong>${G.sessionScore(session, state.picks[p.id], state.results)}</strong></td>`).join('');
+    const totals = state.players.map((p) => `<td class="${p.id === state.me ? 'me' : ''}"><strong>${G.sessionScore(session, state.picks[p.id], state.results)} pts</strong></td>`).join('');
     return `<div class="tablewrap"><table class="grid">
       <caption>${esc(session.name)}</caption>
       <thead><tr><th scope="col">Course</th>${head}</tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot><tr><th scope="row">Points de la session</th>${totals}</tr></tfoot>
+      <tfoot><tr><th scope="row">Total de la session</th>${totals}</tr></tfoot>
     </table></div>`;
   }
   function recapView(key) {
     const sessions = scopeSessions(key);
     const done = sessions.filter(locked);
-    const waiting = sessions.filter((s) => !locked(s));
-    let html = '';
-    if (!done.length) html += '<p class="empty">Aucune session verrouillée. Les choix de chacun sont révélés à la deadline de la session.</p>';
-    html += done.map(recapTable).join('');
-    if (done.length && waiting.length) {
-      html += `<p class="hint">${plural(waiting.length, 'session reste', 'sessions restent')} à venir. Leurs choix seront révélés à leur deadline.</p>`;
-    }
+    const waiting = sessions.length - done.length;
+    let html = done.length ? done.map(recapTable).join('') : '<p class="empty">Rien à voir pour l’instant. Les choix de chacun apparaissent à la deadline de la session.</p>';
+    if (done.length && waiting) html += `<p class="hint">${plural(waiting, 'session reste', 'sessions restent')} à venir.</p>`;
     return html;
   }
 
   /* ---------- Athlètes pris ---------- */
   function takenView(key) {
     const sessions = scopeSessions(key);
-    const takes = {}; // athId -> { playerId -> [labels] }
+    const takes = {};   // athId -> playerId -> [{race, sc}]
+    const totals = { M: {}, W: {} }; // genre -> playerId -> points
     sessions.forEach((s) => {
       G.sessionRaces(s).forEach((r) => {
         state.players.forEach((p) => {
           if (!visible(p.id, s)) return;
           const pk = (state.picks[p.id] || {})[r.id];
           if (!pk || !pk.a) return;
-          ((takes[pk.a] = takes[pk.a] || {})[p.id] = (takes[pk.a][p.id] || [])).push(`${placeLabel(r)}, ${D.DISC[r.disc].short}${r.sub || ''}`);
+          const sc = G.scoreRace(r, pk, state.results);
+          ((takes[pk.a] = takes[pk.a] || {})[p.id] = (takes[pk.a][p.id] || [])).push({ tag: raceTag(r), sc });
+          totals[r.gender][p.id] = (totals[r.gender][p.id] || 0) + (sc || 0);
         });
       });
     });
@@ -217,26 +228,31 @@
         const on = !!takes[a.id];
         const cells = state.players.map((p) => {
           const l = takes[a.id] && takes[a.id][p.id];
-          return `<td class="${p.id === state.me ? 'me' : ''}">${l ? `<span class="mark" title="${esc(l.join(', '))}">${esc(l.join(', '))}</span>` : ''}</td>`;
+          const inner = l ? l.map((x) => `<span class="mark" title="${esc(x.tag)}"><span class="mark__l">${esc(x.tag)}</span>${x.sc === null ? '' : `<b class="mark__p ${x.sc > 0 ? 'on' : 'off'}">${x.sc > 0 ? '+' : ''}${x.sc}</b>`}</span>`).join('') : '';
+          return `<td class="${p.id === state.me ? 'me' : ''}">${inner}</td>`;
         }).join('');
         return `<tr class="${on ? 'is-taken' : 'is-free'}"><th scope="row">${avatar(ATH[a.id], on)}<span class="athname"><span class="rk">${a.rank}</span> ${esc(a.name)} <em class="sub">${a.nat}</em></span></th>${cells}</tr>`;
       }).join('');
+      const foot = state.players.map((p) => `<td class="${p.id === state.me ? 'me' : ''}"><strong>${totals[g][p.id] || 0} pts</strong></td>`).join('');
       return `<div class="tablewrap"><table class="grid grid--taken">
         <caption>${g === 'M' ? 'Messieurs' : 'Dames'}, ${taken} sur ${list.length} déjà pris</caption>
-        <thead><tr><th scope="col">Skieur, par ordre de classement</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
-    }).join('') + '<p class="hint">Photos en couleur : skieur déjà choisi. En noir et blanc : encore libre. Les choix des autres joueurs apparaissent à la deadline de chaque session.</p>';
+        <thead><tr><th scope="col">Skieur</th>${head}</tr></thead><tbody>${rows}</tbody>
+        <tfoot><tr><th scope="row">Points rapportés</th>${foot}</tr></tfoot></table></div>`;
+    }).join('') + '<p class="hint">En couleur : déjà choisi. En noir et blanc : encore libre. Les choix des autres apparaissent à la deadline de chaque session.</p>';
   }
 
   /* ---------- Panneau d'un desk / des Mondiaux ---------- */
   function worldsBox() {
     const b = G.worldsBonus(myPicks(), state.results);
     const lines = b.lines.length
-      ? `<ul class="bonus__lines">${b.lines.map((l) => `<li><span>${esc(l.label)}</span><strong>+${l.pts}</strong></li>`).join('')}</ul>`
-      : '<p class="hint">Aucun bonus pour l’instant.</p>';
+      ? `<ul class="bonus__lines">${b.lines.map((l) => `<li><span>${esc(l.label)}</span><strong>+${l.pts}</strong></li>`).join('')}</ul>` : '';
     return `<aside class="bonus">
       <h3>Bonus des vainqueurs</h3>
-      <p>Choisis les deux vainqueurs d’une même discipline, messieurs et dames : <strong>+200</strong>. Les quatre vainqueurs messieurs, ou les quatre dames : <strong>+400</strong>. Les bonus se cumulent, huit vainqueurs valent 1 600 points.</p>
-      ${lines}
+      <ul class="bonus__rules">
+        <li><strong>+200</strong><span>les deux vainqueurs d’une discipline (messieurs et dames)</span></li>
+        <li><strong>+400</strong><span>les quatre vainqueurs messieurs, ou les quatre dames</span></li>
+        <li><strong>1 600</strong><span>pour les huit, bonus cumulés</span></li>
+      </ul>${lines}
     </aside>`;
   }
   function deskPanel(key) {
@@ -247,58 +263,62 @@
     const score = isW ? G.worldsScore(myPicks(), state.results).total : G.deskScore(key, myPicks(), state.results);
     const total = sessions.reduce((n, s) => n + s.races.length, 0);
     const chosen = sessions.reduce((n, s) => n + s.races.filter((id) => (myPicks()[id] || {}).a).length, 0);
-    const title = isW ? 'Championnats du monde de Crans-Montana' : dk.name;
-    const dates = isW ? '4 au 14 février 2027, barème ×3, hors desks' : `${shortOf(dk.from)} au ${shortOf(dk.to)}`;
+    const title = isW ? 'Championnats du monde' : dk.name;
+    const meta = isW ? `Crans-Montana, 4 au 14 février, ${total} courses` : `${shortOf(dk.from)} au ${shortOf(dk.to)}, ${total} courses`;
     const tabs = [['mine', 'Mon desk'], ['recap', 'Récap des joueurs'], ['taken', 'Athlètes pris']].map(([id, label]) =>
       `<button type="button" role="tab" class="seg__btn" aria-selected="${sub === id}" data-sub="${id}" data-key="${key}">${label}</button>`).join('');
     let body;
     if (sub === 'mine') {
-      body = (isW ? worldsBox() : '') + sessions.map((s, i) => sessionCard(s, isW ? '' : `session ${i + 1} sur ${sessions.length}`)).join('');
+      body = (isW ? worldsBox() : '') + sessions.map((s, i) => sessionCard(s, isW ? '' : `session ${i + 1} sur ${sessions.length}`)).join('')
+        + '<p class="hint">Heures de départ provisoires.</p>';
     } else if (sub === 'recap') body = (isW ? worldsBox() : '') + recapView(key);
     else body = takenView(key);
     return `<section>
       <header class="deskhead">
-        <div><h2>${esc(title)}</h2><p class="deskhead__meta">${esc(dates)}, ${plural(total, 'course', 'courses')}, un skieur ne peut servir qu’une fois${isW ? ' ici' : ' dans ce desk'}</p></div>
-        <dl class="deskhead__stats"><div><dt>Mes choix</dt><dd>${chosen} / ${total}</dd></div><div><dt>Mes points</dt><dd>${score}</dd></div></dl>
+        <div><h2>${esc(title)}</h2><p class="deskhead__meta">${esc(meta)}</p>
+          <p class="rule">${isW ? 'Barème ×3. Un skieur ne peut être choisi qu’une fois.' : 'Un skieur ne peut être choisi qu’une fois dans ce desk.'}</p></div>
+        <dl class="deskhead__stats"><div><dt>Choix faits</dt><dd>${chosen}/${total}</dd></div><div><dt>Points</dt><dd>${score}</dd></div></dl>
       </header>
       <div class="seg" role="tablist" aria-label="Vue du desk">${tabs}</div>
       <div class="deskbody">${body}</div>
     </section>`;
   }
 
-  /* ---------- Session à venir (forfait) ---------- */
+  /* ---------- Session à venir / en cours (forfait) ---------- */
   function nextPanel() {
-    const upcoming = allSessions().find((s) => G.sessionState(s, now()) !== 'terminée');
-    if (!upcoming) return '<p class="empty">La saison est terminée.</p>';
-    const isW = upcoming.id === 'X';
-    const races = G.sessionRaces(upcoming).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time) || a.gender.localeCompare(b.gender));
-    const dl = G.sessionDeadline(upcoming);
-    const open = !locked(upcoming);
+    const up = upcomingSession();
+    if (!up) return '<p class="empty">La saison est terminée.</p>';
+    const isW = up.id === 'X';
+    const races = sortedRaces(up);
+    const dl = G.sessionDeadline(up);
+    const open = !locked(up);
     const n = races.filter((r) => (myPicks()[r.id] || {}).a).length;
-    const where = isW ? 'Hors desk, barème ×3'
-      : `Desk ${upcoming.desk}, session ${D.SESSIONS.filter((s) => s.desk === upcoming.desk).indexOf(upcoming) + 1} sur ${D.SESSIONS.filter((s) => s.desk === upcoming.desk).length}`;
-    const goto = isW ? 0 : upcoming.desk;
-    const list = races.map((r) => `<li class="mini">
-      <span class="mini__when">${dayOf(r.date)}</span>
-      <span class="mini__what">${esc(placeLabel(r))}, ${genderLabel(r)} ${discBadge(r)}</span>
-      <span class="mini__pick">${(myPicks()[r.id] || {}).a ? pickSummary(state.me, r) : '<span class="todo">À choisir</span>'}</span></li>`).join('');
+    const inDesk = D.SESSIONS.filter((s) => s.desk === up.desk);
+    const where = isW ? 'Hors desk, barème ×3' : `Desk ${up.desk}, session ${inDesk.indexOf(up) + 1} sur ${inDesk.length}`;
+    const goto = isW ? 0 : up.desk;
+    const list = races.map((r) => {
+      const d = at(r.date);
+      return `<li class="mini">
+        <span class="mini__when"><b>${F_NUM.format(d)}</b> ${F_MO.format(d)}</span>
+        <span class="mini__what"><strong>${esc(placeLabel(r))}</strong> <span class="gender gender--${r.gender}">${genderLabel(r)}</span>${discBadge(r)}</span>
+        <span class="mini__pick">${(myPicks()[r.id] || {}).a ? pickSummary(state.me, r) : '<span class="todo">À choisir</span>'}</span></li>`;
+    }).join('');
     const stub = open
-      ? `<p class="forfait__label">Il reste</p><p class="countdown" id="countdown" data-dl="${dl.toISOString()}">${countdownText(dl)}</p>
-         <p class="forfait__dl">avant la deadline du ${deadlineText(dl)}${races.some((r) => !r.timeKnown) ? ', heure à confirmer' : ''}</p>`
-      : `<p class="forfait__label">Choix verrouillés</p><p class="countdown countdown--shut">Course en cours</p>
-         <p class="forfait__dl">Verrouillés depuis le ${deadlineText(dl)}</p>`;
+      ? `<p class="forfait__label">Deadline dans</p><p class="countdown" id="countdown" data-dl="${dl.toISOString()}">${countdownText(dl)}</p><p class="forfait__dl">${dlShort(dl)}</p>`
+      : `<p class="forfait__label">Choix verrouillés</p><p class="countdown countdown--shut">Course en cours</p><p class="forfait__dl">depuis ${dlShort(dl)}</p>`;
+    const cta = open ? (n === races.length ? 'Modifier mes choix' : 'Faire mes choix') : 'Voir le desk';
     return `<section>
       <article class="forfait">
         <div class="forfait__main">
-          ${stateBadge(upcoming)}
-          <h2 class="forfait__name">${esc(upcoming.name)}</h2>
-          <p class="forfait__where">${esc(where)}, ${plural(races.length, 'course', 'courses')}</p>
+          ${stateBadge(up)}
+          <h2 class="forfait__name">${esc(up.name)}</h2>
+          <p class="forfait__where">${esc(where)}</p>
           <ul class="minis">${list}</ul>
-          <button type="button" class="btn btn--brique" data-goto="${goto}">${open ? `${n === races.length ? 'Modifier mes choix' : 'Faire mes choix'} dans ${isW ? 'les Mondiaux' : 'le desk ' + upcoming.desk}` : `Voir ${isW ? 'les Mondiaux' : 'le desk ' + upcoming.desk}`}</button>
+          <button type="button" class="btn btn--brique" data-goto="${goto}">${cta}</button>
         </div>
         <div class="forfait__stub">${stub}</div>
       </article>
-      ${open ? '' : `<h3 class="subtitle">Choix de tous les joueurs</h3>${recapTable(upcoming)}`}
+      ${open ? '' : `<h3 class="subtitle">Choix de tous les joueurs</h3>${recapTable(up)}`}
     </section>`;
   }
   function countdownText(dl) {
@@ -325,30 +345,35 @@
   function generalPanel() {
     const R = state.results;
     const rows = rankRows((pk) => G.generalScore(pk, R));
-    const main = `<div class="tablewrap"><table class="grid grid--rank grid--general"><caption>Le gros globe, tous les joueurs</caption>
+    const main = `<div class="tablewrap"><table class="grid grid--rank grid--general"><caption>Le gros globe</caption>
       <thead><tr><th scope="col" class="num">Rang</th><th scope="col">Joueur</th><th scope="col" class="num">Desk 1</th><th scope="col" class="num">Desk 2</th><th scope="col" class="num">Desk 3</th><th scope="col" class="num">Mondiaux</th><th scope="col" class="num">Total</th></tr></thead>
       <tbody>${rows.map((r) => `<tr class="${r.p.id === state.me ? 'me' : ''}"><td class="num">${r.rank}</td><th scope="row">${esc(r.p.name)}</th>${r.v.desks.map((d) => `<td class="num">${d}</td>`).join('')}<td class="num">${r.v.worlds}</td><td class="num total">${r.v.total}</td></tr>`).join('')}</tbody></table></div>`;
     const desks = D.DESKS.map((d) => smallRanking(`Classement du ${d.name}`, (pk) => G.deskScore(d.id, pk, R))).join('');
     const discs = ['DH', 'SG', 'GS', 'SL'].map((c) => smallRanking(`Petit globe de ${c === 'SG' ? 'super-G' : D.DISC[c].fr.toLowerCase()}`, (pk) => G.disciplineScore(c, pk, R))).join('');
-    const none = Object.keys(R).length === 0 ? '<p class="hint">Aucun résultat pour l’instant : tous les compteurs sont à zéro.</p>' : '';
+    const none = Object.keys(R).length === 0 ? '<p class="hint">Aucun résultat pour l’instant.</p>' : '';
     return `<section><header class="deskhead"><div><h2>Classement général</h2>
-      <p class="deskhead__meta">Les trois desks et les Mondiaux, bonus compris</p></div></header>${none}${main}
-      <h3 class="subtitle">Un classement par desk</h3><p class="hint">Pour s’accrocher quand le général est perdu.</p><div class="grid3">${desks}</div>
-      <h3 class="subtitle">Les petits globes</h3><p class="hint">Points marqués dans chaque discipline, Mondiaux compris, sans les bonus.</p><div class="grid2">${discs}</div></section>`;
+      <p class="deskhead__meta">Trois desks et les Mondiaux, bonus compris</p></div></header>${none}${main}
+      <h3 class="subtitle">Par desk</h3><div class="grid3">${desks}</div>
+      <h3 class="subtitle">Petits globes</h3><div class="grid2">${discs}</div></section>`;
   }
 
   /* ---------- Navigation & rendu ---------- */
-  const TABS = [
-    { id: 'next', label: 'Session à venir', note: () => '' },
-    { id: '1', label: 'Desk 1', note: () => `${shortOf(D.DESKS[0].from)} au ${shortOf(D.DESKS[0].to)}` },
-    { id: '2', label: 'Desk 2', note: () => `${shortOf(D.DESKS[1].from)} au ${shortOf(D.DESKS[1].to)}` },
-    { id: '3', label: 'Desk 3', note: () => `${shortOf(D.DESKS[2].from)} au ${shortOf(D.DESKS[2].to)}` },
-    { id: 'w', label: 'Mondiaux', note: () => '4 au 14 févr.' },
-    { id: 'gen', label: 'Classement général', note: () => '' },
-  ];
+  function tabs() {
+    const up = upcomingSession();
+    const label = up && G.sessionState(up, now()) === 'en cours' ? 'Session en cours' : 'Session à venir';
+    return [
+      { id: 'next', label, note: '' },
+      { id: '1', label: 'Desk 1', note: `${shortOf(D.DESKS[0].from)} au ${shortOf(D.DESKS[0].to)}` },
+      { id: '2', label: 'Desk 2', note: `${shortOf(D.DESKS[1].from)} au ${shortOf(D.DESKS[1].to)}` },
+      { id: '3', label: 'Desk 3', note: `${shortOf(D.DESKS[2].from)} au ${shortOf(D.DESKS[2].to)}` },
+      { id: 'w', label: 'Mondiaux', note: '4 au 14 févr.' },
+      { id: 'gen', label: 'Classement général', note: '' },
+    ];
+  }
+  const TAB_IDS = ['next', '1', '2', '3', 'w', 'gen'];
   function renderTabs() {
-    $('#tabs').innerHTML = TABS.map((t) => `<button type="button" role="tab" class="plate" id="tab-${t.id}" data-tab="${t.id}" aria-selected="${state.tab === t.id}">
-      <span class="plate__label">${t.label}</span>${t.note() ? `<span class="plate__note">${t.note()}</span>` : ''}</button>`).join('');
+    $('#tabs').innerHTML = tabs().map((t) => `<button type="button" role="tab" class="plate" id="tab-${t.id}" data-tab="${t.id}" aria-selected="${state.tab === t.id}">
+      <span class="plate__label">${t.label}</span>${t.note ? `<span class="plate__note">${t.note}</span>` : ''}</button>`).join('');
   }
   function renderPanel() {
     const t = state.tab;
@@ -361,22 +386,24 @@
   function syncSim() {
     const el = $('#sim-date');
     if (!el) return;
-    const d = now();
-    const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(d).map((x) => [x.type, x.value]));
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(now()).map((x) => [x.type, x.value]));
     el.value = `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
   }
 
-  function setTab(id, push) {
+  /** Changer d'onglet ramène toujours chaque desk sur son premier sous-onglet (« Mon desk »). */
+  function setTab(id) {
     state.tab = id;
-    if (push !== false) { try { history.replaceState(null, '', '#' + id); } catch (e) { /* ignoré */ } }
+    state.sub = freshSubs();
+    try { history.replaceState(null, '', '#' + id); } catch (e) { /* ignoré */ }
     render();
+    window.scrollTo({ top: 0 });
   }
 
   document.addEventListener('click', (e) => {
     const tab = e.target.closest('[data-tab]');
-    if (tab) { setTab(tab.dataset.tab); window.scrollTo({ top: 0 }); return; }
+    if (tab) { setTab(tab.dataset.tab); return; }
     const go = e.target.closest('[data-goto]');
-    if (go) { setTab(go.dataset.goto === '0' ? 'w' : go.dataset.goto); window.scrollTo({ top: 0 }); return; }
+    if (go) { setTab(go.dataset.goto === '0' ? 'w' : go.dataset.goto); return; }
     const sub = e.target.closest('[data-sub]');
     if (sub) { state.sub[Number(sub.dataset.key)] = sub.dataset.sub; renderPanel(); return; }
     if (e.target.closest('#btn-demo')) loadDemo();
@@ -388,17 +415,16 @@
     const sel = e.target.closest('select.pick');
     if (sel) {
       const race = D.RACES[sel.dataset.race];
-      const session = [...D.SESSIONS, D.WORLDS].find((s) => s.races.includes(race.id));
-      if (locked(session)) { render(); return; } // deadline passée : on ignore
+      if (locked(sessionOf(race))) { render(); return; } // deadline passée : on ignore
       const picks = myPicks();
       const cur = picks[race.id] || (picks[race.id] = {});
       const slot = sel.dataset.slot;
       if (sel.value) cur[slot] = sel.value; else delete cur[slot];
-      if (slot === 'a') { if (!cur.a) delete cur.b; else if (cur.b === cur.a) delete cur.b; }
+      if (slot === 'a') { if (!cur.a || cur.b === cur.a) delete cur.b; }
       if (!cur.a && !cur.b) delete picks[race.id];
       save();
       const y = window.scrollY;
-      renderPanel(); renderTabs();
+      renderPanel();
       window.scrollTo({ top: y });
       const again = document.getElementById(sel.id);
       if (again) again.focus({ preventScroll: true });
@@ -410,6 +436,11 @@
       render();
     }
   });
+
+  // Une photo absente (fichier non fourni) est retirée : il reste les initiales.
+  document.addEventListener('error', (e) => {
+    if (e.target && e.target.classList && e.target.classList.contains('avatar__img')) e.target.remove();
+  }, true);
 
   function loadDemo() {
     state.demo = true;
@@ -429,6 +460,6 @@
   load();
   const q = new URLSearchParams(location.search);
   const h = location.hash.replace('#', '');
-  if (TABS.some((t) => t.id === h)) state.tab = h;
+  if (TAB_IDS.includes(h)) state.tab = h;
   if (q.has('demo')) loadDemo(); else render();
 })();
