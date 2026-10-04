@@ -1,11 +1,4 @@
 {
- "marco-odermatt": {
-  "name": "Marco Odermatt",
-  "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
-  "license": "Droits réservés",
-  "page": "https://www.olympedia.org/athletes/148903",
-  "how": "olympedia"
- },
  "lucas-pinheiro-braathen": {
   "name": "Lucas Pinheiro Braathen",
   "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
@@ -76,13 +69,6 @@
   "page": "https://www.olympedia.org/athletes/136707",
   "how": "olympedia"
  },
- "raphael-haaser": {
-  "name": "Raphael Haaser",
-  "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
-  "license": "Droits réservés",
-  "page": "https://www.olympedia.org/athletes/147841",
-  "how": "olympedia"
- },
  "clement-noel": {
   "name": "Clément Noël",
   "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
@@ -144,13 +130,6 @@
   "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
   "license": "Droits réservés",
   "page": "https://www.olympedia.org/athletes/137382",
-  "how": "olympedia"
- },
- "eduard-hallberg": {
-  "name": "Eduard Hallberg",
-  "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
-  "license": "Droits réservés",
-  "page": "https://www.olympedia.org/athletes/138643",
   "how": "olympedia"
  },
  "mattia-casse": {
@@ -685,13 +664,6 @@
   "page": "https://www.olympedia.org/athletes/128669",
   "how": "olympedia"
  },
- "emma-aicher": {
-  "name": "Emma Aicher",
-  "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
-  "license": "Droits réservés",
-  "page": "https://www.olympedia.org/athletes/148378",
-  "how": "olympedia"
- },
  "camille-rast": {
   "name": "Camille Rast",
   "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
@@ -732,13 +704,6 @@
   "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
   "license": "Droits réservés",
   "page": "https://www.olympedia.org/athletes/156659",
-  "how": "olympedia"
- },
- "julia-scheib": {
-  "name": "Julia Scheib",
-  "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
-  "license": "Droits réservés",
-  "page": "https://www.olympedia.org/athletes/2301160",
   "how": "olympedia"
  },
  "sara-hector": {
@@ -895,13 +860,6 @@
   "page": "https://www.olympedia.org/athletes/148136",
   "how": "olympedia"
  },
- "mirjam-puchner": {
-  "name": "Mirjam Puchner",
-  "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
-  "license": "Droits réservés",
-  "page": "https://www.olympedia.org/athletes/147837",
-  "how": "olympedia"
- },
  "katharina-liensberger": {
   "name": "Katharina Liensberger",
   "author": "Bundesministerium für Finanzen",
@@ -943,13 +901,6 @@
   "license": "CC BY-SA 4.0",
   "page": "https://commons.wikimedia.org/wiki/File:Marta_Bassino_Sestriere_2022_(cropped).jpg",
   "how": "fis"
- },
- "nina-o-brien": {
-  "name": "Nina O'Brien",
-  "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
-  "license": "Droits réservés",
-  "page": "https://www.olympedia.org/athletes/149065",
-  "how": "olympedia"
  },
  "neja-dvornik": {
   "name": "Neja Dvornik",
@@ -1040,13 +991,6 @@
   "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
   "license": "Droits réservés",
   "page": "https://www.olympedia.org/athletes/156118",
-  "how": "olympedia"
- },
- "melanie-meillard": {
-  "name": "Melanie Meillard",
-  "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
-  "license": "Droits réservés",
-  "page": "https://www.olympedia.org/athletes/1800338",
   "how": "olympedia"
  },
  "andreja-slokar": {
@@ -1238,13 +1182,6 @@
   "page": "https://commons.wikimedia.org/wiki/File:Marta_Rossetti_in_Soldeu_2024_SL_1st_run_(11).jpg",
   "how": "fis"
  },
- "delia-durrer": {
-  "name": "Delia Durrer",
-  "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
-  "license": "Droits réservés",
-  "page": "https://www.olympedia.org/athletes/138552",
-  "how": "olympedia"
- },
  "martina-dubovska": {
   "name": "Martina Dubovska",
   "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
@@ -1313,13 +1250,6 @@
   "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
   "license": "Droits réservés",
   "page": "https://www.olympedia.org/athletes/138544",
-  "how": "olympedia"
- },
- "carla-mijares-ruf": {
-  "name": "Carla Mijares Ruf",
-  "author": "Comité d'organisation des Jeux / CIO (via Olympedia)",
-  "license": "Droits réservés",
-  "page": "https://www.olympedia.org/athletes/138654",
   "how": "olympedia"
  },
  "christina-ager": {
