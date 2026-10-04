@@ -4,7 +4,8 @@
 const fs = require('fs'), path = require('path');
 const d = require('../js/athletes.js');
 const map = {};
-[...d.M, ...d.W].forEach((a) => { if (a.fss) map[a.id] = a.fss; });
+d.M.forEach((a) => { if (a.fss) map[a.id] = a.fss; });
+d.W.forEach((a) => { if (a.fss) map[a.id] = a.fss + 'w'; });
 const code = `/* Ski game – à coller dans la console du navigateur, sur une page de https://firstskisport.com (générée : ne pas modifier) */
 (async () => {
   const MAP = ${JSON.stringify(map)};
@@ -13,7 +14,21 @@ const code = `/* Ski game – à coller dans la console du navigateur, sur une p
     return (b) => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }; })();
   const enc = new TextEncoder(), files = [], missing = [];
   const u16 = (v) => [v & 255, v >> 8 & 255], u32 = (v) => [v & 255, v >> 8 & 255, v >> 16 & 255, v >>> 24];
-  async function grab(fss) {
+  async function viaPage(key) {
+    const w = key.endsWith('w'), id = key.replace('w', '');
+    for (const u of ['/alpine/athlete.php?id=' + id + (w ? '&g=w' : ''), '/alpine/athlete.php?id=' + id]) {
+      try {
+        const r = await fetch(u); if (!r.ok) continue;
+        const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+        const hit = [...doc.querySelectorAll('img')].map((i) => i.getAttribute('src') || '').find((x) => /img\\/alpine\\/\\d{4}\\/\\d+\\.(png|jpe?g|webp)/i.test(x));
+        if (hit) { const ir = await fetch(new URL(hit, location.origin + '/alpine/').href); if (ir.ok) return await ir.blob(); }
+      } catch (e) {}
+    }
+    return null;
+  }
+  async function grab(key) {
+    const b = await viaPage(key); if (b) return b;
+    const fss = key.replace('w', '');
     for (const y of YEARS) for (const ext of ['png', 'jpg']) {
       try { const r = await fetch('/img/alpine/' + y + '/' + fss + '.' + ext); if (r.ok && /^image\\//.test(r.headers.get('content-type') || '')) return await r.blob(); } catch (e) {}
     }
