@@ -1,13 +1,13 @@
 /* Ski game – interface (maquette sans connexion) */
 (function () {
   'use strict';
-  const D = window.SKI_DATA, G = window.SKI_GAME, DEMO = window.SKI_DEMO;
+  const D = window.SKI_DATA, G = window.SKI_GAME, DEMO = window.SKI_DEMO, ATHL = window.SKI_ATHLETES;
   const TZ = 'Europe/Paris';
   const STORE = 'skigame.maquette.picks';
   const PHOTO_DIR = 'img/athletes/'; // une photo par skieur : img/athletes/<id>.jpg (voir README)
 
   const ATH = {};
-  ['M', 'W'].forEach((g) => DEMO.ATHLETES[g].forEach((a) => { ATH[a.id] = Object.assign({ gender: g }, a); }));
+  ['M', 'W'].forEach((g) => ATHL[g].forEach((a) => { ATH[a.id] = Object.assign({ gender: g }, a); }));
 
   const freshSubs = () => ({ 1: 'mine', 2: 'mine', 3: 'mine', 0: 'mine' });
   const state = {
@@ -19,6 +19,8 @@
     me: DEMO.ME,
     picks: { [DEMO.ME]: {} },
     results: {},
+    tq: '',        // recherche dans « Athlètes pris »
+    tf: 'all',     // filtre : all | taken | free
   };
 
   /* ---------- Utilitaires ---------- */
@@ -40,6 +42,7 @@
   const plural = (n, one, many) => `${n} ${n > 1 ? many : one}`;
   const surname = (name) => { const p = name.split(' '); return p.length > 1 ? `${p[0][0]}. ${p.slice(1).join(' ')}` : name; };
   const ordinal = (n) => (n === 1 ? '1er' : `${n}e`);
+  const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const myPicks = () => state.picks[state.me] || (state.picks[state.me] = {});
 
   const allSessions = () => [...D.SESSIONS, D.WORLDS].sort((a, b) => G.sessionDeadline(a) - G.sessionDeadline(b));
@@ -77,7 +80,8 @@
   }
   /** Avatar : initiales par défaut, photo par-dessus si le fichier existe (sinon l'image est retirée). */
   function avatar(a, on, size) {
-    const initials = a.name.split(' ').map((w) => w[0]).slice(0, 2).join('');
+    const caps = a.name.split(' ').filter((w) => /^[A-ZÀ-ÝÖÜÄ]/.test(w));
+    const initials = (caps.length > 1 ? caps[0][0] + caps[caps.length - 1][0] : (caps[0] || a.name).slice(0, 2)).toUpperCase();
     return `<span class="avatar avatar--${a.gender}${size ? ' avatar--' + size : ''}${on === false ? ' is-off' : ''}" aria-hidden="true"><span class="avatar__in">${esc(initials)}</span><img class="avatar__img" src="${PHOTO_DIR}${a.id}.jpg" alt="" loading="lazy"></span>`;
   }
   const avatarOf = (id, size) => (ATH[id] ? avatar(ATH[id], true, size) : '');
@@ -95,7 +99,7 @@
     const used = G.usedInDesk(session.desk, race.gender, picks, race.id);
     const cur = picks[race.id] || {};
     const head = `<option value="">${slot === 'a' ? 'Choisir un skieur' : 'Remplaçant (facultatif)'}</option>`;
-    return head + DEMO.ATHLETES[race.gender].map((a) => {
+    return head + ATHL[race.gender].map((a) => {
       const isCur = cur[slot] === a.id;
       const taken = used.has(a.id);
       const dis = !isCur && (taken || (slot === 'b' && cur.a === a.id));
@@ -221,8 +225,14 @@
       });
     });
     const head = state.players.map((p) => `<th scope="col" class="${p.id === state.me ? 'me' : ''}">${esc(p.name)}</th>`).join('');
-    return ['M', 'W'].map((g) => {
-      const list = DEMO.ATHLETES[g];
+    const filters = `<div class="filters">
+      <label class="sr" for="ath-q">Chercher un skieur</label>
+      <input type="search" id="ath-q" class="search" placeholder="Chercher un skieur ou une nation" value="${esc(state.tq)}" autocomplete="off">
+      <div class="seg seg--sm" role="group" aria-label="Filtrer les skieurs">${[['all', 'Tous'], ['taken', 'Déjà pris'], ['free', 'Encore libres']].map(([id, l]) =>
+        `<button type="button" class="seg__btn" data-tf="${id}" aria-pressed="${state.tf === id}">${l}</button>`).join('')}</div>
+    </div>`;
+    return filters + ['M', 'W'].map((g) => {
+      const list = ATHL[g];
       const taken = list.filter((a) => takes[a.id]).length;
       const rows = list.map((a) => {
         const on = !!takes[a.id];
@@ -231,10 +241,10 @@
           const inner = l ? l.map((x) => `<span class="mark" title="${esc(x.tag)}"><span class="mark__l">${esc(x.tag)}</span>${x.sc === null ? '' : `<b class="mark__p ${x.sc > 0 ? 'on' : 'off'}">${x.sc > 0 ? '+' : ''}${x.sc}</b>`}</span>`).join('') : '';
           return `<td class="${p.id === state.me ? 'me' : ''}">${inner}</td>`;
         }).join('');
-        return `<tr class="${on ? 'is-taken' : 'is-free'}"><th scope="row">${avatar(ATH[a.id], on)}<span class="athname"><span class="rk">${a.rank}</span> ${esc(a.name)} <em class="sub">${a.nat}</em></span></th>${cells}</tr>`;
+        return `<tr class="${on ? 'is-taken' : 'is-free'}" data-name="${esc(norm(a.name + ' ' + (a.fis || '') + ' ' + a.nat))}" data-taken="${on ? 1 : 0}"><th scope="row">${avatar(ATH[a.id], on)}<span class="athname"><span class="rk">${a.rank}</span> ${esc(a.name)} <em class="sub">${a.nat}</em></span></th>${cells}</tr>`;
       }).join('');
       const foot = state.players.map((p) => `<td class="${p.id === state.me ? 'me' : ''}"><strong>${totals[g][p.id] || 0} pts</strong></td>`).join('');
-      return `<div class="tablewrap"><table class="grid grid--taken">
+      return `<div class="tablewrap tablewrap--scroll"><table class="grid grid--taken">
         <caption>${g === 'M' ? 'Messieurs' : 'Dames'}, ${taken} sur ${list.length} déjà pris</caption>
         <thead><tr><th scope="col">Skieur</th>${head}</tr></thead><tbody>${rows}</tbody>
         <tfoot><tr><th scope="row">Points rapportés</th>${foot}</tr></tfoot></table></div>`;
@@ -380,6 +390,17 @@
     const html = t === 'next' ? nextPanel() : t === 'gen' ? generalPanel() : t === 'w' ? deskPanel(0) : deskPanel(Number(t));
     $('#panel').innerHTML = (state.demo ? '<p class="demo">Démonstration : joueurs, choix et résultats fictifs.</p>' : '') + html;
     $('#panel').setAttribute('aria-labelledby', 'tab-' + t);
+    applyTakenFilter();
+  }
+  /** Recherche et filtre de « Athlètes pris » : on masque des lignes, sans réafficher (le focus reste dans le champ). */
+  function applyTakenFilter() {
+    const q = norm(state.tq.trim());
+    document.querySelectorAll('.grid--taken tbody tr').forEach((tr) => {
+      const okQ = !q || tr.dataset.name.includes(q);
+      const okF = state.tf === 'all' || (state.tf === 'taken') === (tr.dataset.taken === '1');
+      tr.hidden = !(okQ && okF);
+    });
+    document.querySelectorAll('[data-tf]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tf === state.tf)));
   }
   function render() { renderTabs(); renderPanel(); syncSim(); }
 
@@ -404,6 +425,8 @@
     if (tab) { setTab(tab.dataset.tab); return; }
     const go = e.target.closest('[data-goto]');
     if (go) { setTab(go.dataset.goto === '0' ? 'w' : go.dataset.goto); return; }
+    const tf = e.target.closest('[data-tf]');
+    if (tf) { state.tf = tf.dataset.tf; applyTakenFilter(); return; }
     const sub = e.target.closest('[data-sub]');
     if (sub) { state.sub[Number(sub.dataset.key)] = sub.dataset.sub; renderPanel(); return; }
     if (e.target.closest('#btn-demo')) loadDemo();
@@ -435,6 +458,10 @@
       state.sim = G.parisInstant(d, t);
       render();
     }
+  });
+
+  document.addEventListener('input', (e) => {
+    if (e.target.id === 'ath-q') { state.tq = e.target.value; applyTakenFilter(); }
   });
 
   // Une photo absente (fichier non fourni) est retirée : il reste les initiales.

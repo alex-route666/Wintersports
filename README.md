@@ -28,10 +28,13 @@ Page statique, sans connexion Google ni base de données pour l'instant.
 - Le panneau « Atelier de la maquette » (en bas de page) charge des données de démonstration et permet de simuler une date.
 - `js/data.js` : calendrier, desks, sessions, barème.
 - `js/game.js` : règles du jeu (points, bonus, contrainte « une fois par desk », deadlines).
-- `js/demo.js` : skieurs, joueurs, choix et résultats **fictifs**.
+- `js/athletes.js` : liste des skieurs (168 messieurs, 151 dames), générée à partir des classements FIS 2025-26. Ne pas modifier à la main.
+- `js/fis-import.js` : lecture des pages FIS « Cup Standings » enregistrées en HTML, noms, identifiants, fusion avec alertes d'orthographe.
+- `tools/build-athletes.js` : régénère `js/athletes.js` (`node tools/build-athletes.js messieurs.html dames.html`).
+- `js/demo.js` : joueurs, choix et résultats **fictifs** (les skieurs, eux, sont réels).
 - `js/app.js`, `css/style.css` : interface. Typographies : Bricolage Grotesque et Instrument Sans (Google Fonts).
 
-Tests des règles : `node tests/game.test.js`.
+Tests : `node tests/game.test.js` et `node tests/fis-import.test.js`.
 
 ## Photos des skieurs
 
@@ -43,6 +46,6 @@ Déposer une photo par skieur dans `img/athletes/`, nommée avec l'identifiant d
 
 ## À venir
 
-Connexion Google et Firestore, import de la liste WCSL (avec arbitrage des changements d'orthographe), saisie et correction manuelle des résultats (ex aequo compris), import automatique des résultats, historique des résultats par piste.
+Section Admin (import de liste avec arbitrage des orthographes, saisie et correction des résultats, attribution des tirages au sort), connexion Google et Firestore, remplacement du classement 2025-26 par la liste de départ WCSL, saisie et correction manuelle des résultats (ex aequo compris), import automatique des résultats, historique des résultats par piste.
 
 Calendrier : Wikipédia FR (version du 12/09/2026) et programme officiel des Mondiaux de Crans-Montana. Heures de départ des courses de Coupe du monde : provisoires.

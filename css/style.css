@@ -255,3 +255,17 @@ button, select, input { font: inherit; color: inherit; }
   .deskhead__stats { width: 100%; }
   .deskhead__stats > div { flex: 1; }
 }
+
+/* Athlètes pris : cadre défilant, en-têtes et totaux toujours visibles */
+.filters { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: center; margin-bottom: 1rem; }
+.search { flex: 1 1 14rem; max-width: 22rem; padding: .5rem .8rem; border: 2px solid var(--nuit); border-radius: 8px; background: var(--neige); }
+.seg--sm { margin-bottom: 0; }
+.seg--sm .seg__btn { padding: .4rem .8rem; font-size: .9rem; }
+.seg__btn[aria-pressed='true'] { background: var(--nuit); color: var(--neige); }
+.tablewrap--scroll { max-height: min(70vh, 640px); overflow: auto; }
+.tablewrap--scroll .grid caption { position: sticky; left: 0; }
+.tablewrap--scroll thead th { position: sticky; top: 0; z-index: 2; }
+.tablewrap--scroll tfoot th, .tablewrap--scroll tfoot td { position: sticky; bottom: 0; z-index: 2; }
+.grid--taken tbody th { position: sticky; left: 0; z-index: 1; background: var(--neige); }
+.grid--taken tbody tr.is-taken th { background: var(--neige); }
+.grid--taken thead th:first-child, .grid--taken tfoot th { left: 0; z-index: 3; }

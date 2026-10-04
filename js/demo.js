@@ -1,26 +1,10 @@
 /* Ski game – DONNÉES DE DÉMONSTRATION (maquette).
-   La liste des skieurs sera remplacée par l'import de la liste WCSL ; les joueurs, choix et résultats
-   ci-dessous sont inventés et ne servent qu'à montrer l'interface. */
+   Les joueurs, choix et résultats ci-dessous sont inventés et ne servent qu'à montrer l'interface. */
 (function (root) {
   'use strict';
 
-  const slug = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  const mk = (list) => list.map(([name, nat], i) => ({ id: slug(name), name, nat, rank: i + 1 }));
-
-  const ATHLETES = {
-    M: mk([
-      ['Marco Odermatt', 'SUI'], ['Loïc Meillard', 'SUI'], ['Henrik Kristoffersen', 'NOR'],
-      ['Lucas Pinheiro Braathen', 'BRA'], ['Marco Schwarz', 'AUT'], ['Aleksander Aamodt Kilde', 'NOR'],
-      ['Clément Noël', 'FRA'], ['Atle Lie McGrath', 'NOR'], ['Cyprien Sarrazin', 'FRA'],
-      ['Alexis Monney', 'SUI'], ['Manuel Feller', 'AUT'], ['Timon Haugan', 'NOR'],
-    ]),
-    W: mk([
-      ['Mikaela Shiffrin', 'USA'], ['Lara Gut-Behrami', 'SUI'], ['Federica Brignone', 'ITA'],
-      ['Sofia Goggia', 'ITA'], ['Camille Rast', 'SUI'], ['Lena Dürr', 'GER'],
-      ['Zrinka Ljutić', 'CRO'], ['Paula Moltzan', 'USA'], ['Alice Robinson', 'NZL'],
-      ['Laura Pirovano', 'ITA'], ['Wendy Holdener', 'SUI'], ['Julia Scheib', 'AUT'],
-    ]),
-  };
+  // Les skieurs viennent de la vraie liste (js/athletes.js) ; seuls joueurs, choix et résultats sont fictifs.
+  const ATHLETES = root.SKI_ATHLETES || (typeof require === 'function' ? require('./athletes.js') : { M: [], W: [] });
 
   const PLAYERS = [
     { id: 'p1', name: 'Alexandre' }, { id: 'p2', name: 'Joueur 2' }, { id: 'p3', name: 'Joueur 3' },
@@ -49,7 +33,7 @@
     p6: { M01: { a: A('M', 4) }, W01: { a: A('W', 7) }, M02: { a: A('M', 3) }, W02: { a: A('W', 11) } },
   };
 
-  const api = { ATHLETES, PLAYERS, ME, RESULTS, PICKS, DEMO_NOW: '2026-11-16T09:00:00Z' };
+  const api = { PLAYERS, ME, RESULTS, PICKS, DEMO_NOW: '2026-11-16T09:00:00Z' };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.SKI_DEMO = api;
 })(typeof window !== 'undefined' ? window : globalThis);
