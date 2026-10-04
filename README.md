@@ -49,3 +49,7 @@ Déposer une photo par skieur dans `img/athletes/`, nommée avec l'identifiant d
 Section Admin (import de liste avec arbitrage des orthographes, saisie et correction des résultats, attribution des tirages au sort), connexion Google et Firestore, remplacement du classement 2025-26 par la liste de départ WCSL, saisie et correction manuelle des résultats (ex aequo compris), import automatique des résultats, historique des résultats par piste.
 
 Calendrier : Wikipédia FR (version du 12/09/2026) et programme officiel des Mondiaux de Crans-Montana. Heures de départ des courses de Coupe du monde : provisoires.
+
+## Photos des skieurs
+Photos FIS (médias) hébergées par firstskisport.com. `tools/add-fss.js` ajoute l'identifiant du site à `js/athletes.js` (158/168 messieurs, 142/151 dames ; les autres, surtout des athlètes marqués « # », gardent leurs initiales).
+Sur ton ordinateur : `npm i sharp` puis `node tools/fetch-photos.js` remplit `img/athletes/<id>.jpg` (240 px). Ensuite `git add img && git commit && git push`.

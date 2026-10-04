@@ -1,0 +1,15 @@
+const assert = require('assert');
+const S = require('../tools/parse-firstskisport.js');
+const row = (nat, id, first, sur) => `<tr class="ranking nat${nat} x"><td><a href="athlete.php?id=${id}"><span>${sur}</span> ${first}</a></td></tr>`;
+const rows = S.parseRanking(row('SUI', 3040, 'Marco', 'Odermatt') + row('NOR', 9, 'Fredrik', 'Møller') + row('ESP', 5, 'Joan', 'Verdu Sanchez'));
+assert.strictEqual(rows.length, 3);
+assert.strictEqual(rows[0].name, 'Marco Odermatt');
+const list = [{ id: 'marco-odermatt', name: 'Marco Odermatt', nat: 'SUI' }, { id: 'fredrik-moeller', name: 'Fredrik Möller', nat: 'NOR' }, { id: 'joan-verdu', name: 'Joan Verdu', nat: 'ESP' }, { id: 'x-y', name: 'X Y', nat: 'AUT' }];
+const r = S.matchAthletes(list, rows);
+assert.strictEqual(r.matches.get('marco-odermatt').fss, '3040');
+assert.strictEqual(r.matches.get('fredrik-moeller').fss, '9');
+assert.strictEqual(r.matches.get('joan-verdu').how, 'nom contenu');
+assert.deepStrictEqual(r.unmatched.map((a) => a.id), ['x-y']);
+assert.strictEqual(S.betterName('Fredrik Möller', 'Fredrik Møller'), 'Fredrik Møller');
+assert.strictEqual(S.betterName('Ann Lee', 'Bob Lee'), 'Ann Lee');
+console.log('Tests Firstskisport : OK.');
