@@ -2,7 +2,8 @@ const assert = require('assert');
 const F = require('../js/fis-import.js');
 
 const tail = '<td>Downhill</td><td>DH</td><td>---</td><td>Slalom</td><td>SL</td><td>1</td><td>1\'080</td>';
-const row = (cells, rank, pts) => `<tr>${cells.map((c) => `<td>${c}</td>`).join('')}<td>Overall</td><td>ALL</td><td>${rank}</td><td>${pts}</td>${tail}</tr>`;
+let n = 1000;
+const row = (cells, rank, pts) => `<a class="table-row  reset-padding" href="https://www.fis-ski.com/DB/general/athlete-biography.html?sectorcode=AL&amp;competitorid=${++n}&amp;type=cups&amp;cupcode=WCSL">${cells.map((c) => `<td>${c}</td>`).join('')}<td>Overall</td><td>ALL</td><td>${rank}</td><td>${pts}</td>${tail}</a>`;
 
 // ---- Dames : nom, [#], nation
 const women = '<html><script>var x="<b>Overall</b>";</script><body><table>' + [
@@ -26,6 +27,8 @@ assert.strictEqual(by(w.athletes, 'a-j-hurt').name, 'A J Hurt', 'sans prénom di
 assert.strictEqual(by(w.athletes, 'lena-duerr').name, 'Lena Dürr', 'correction d\'accent connue');
 assert.strictEqual(by(w.athletes, 'mikaela-shiffrin').pts, 1534, 'séparateur de milliers');
 assert.strictEqual(by(w.athletes, 'mikaela-shiffrin').inj, false);
+assert.strictEqual(by(w.athletes, 'mikaela-shiffrin').fid, '1001', 'identifiant FIS lu (ordre de la page conservé après tri)');
+assert.strictEqual(by(w.athletes, 'lena-duerr').fid, '1005');
 
 // ---- Messieurs : nom, marque de skis, [#], nation
 const men = '<table>' + [
@@ -43,6 +46,8 @@ assert.strictEqual(by(m.athletes, 'franjo-von-allmen').name, 'Franjo von Allmen'
 assert.strictEqual(by(m.athletes, 'aleksander-aamodt-kilde').inj, true, '# après la marque');
 assert.strictEqual(by(m.athletes, 'aleksander-aamodt-kilde').brand, 'Atomic');
 assert.strictEqual(by(m.athletes, 'loic-meillard').name, 'Loïc Meillard');
+
+assert.strictEqual(by(m.athletes, 'marco-odermatt').fid, '1008');
 
 // ---- Page illisible : avertissement, pas d'exception
 const bad = F.parseFisStandings('<td>X</td><td>??</td><td>Overall</td><td>ALL</td><td>abc</td><td>1</td>', 'W');
@@ -75,6 +80,9 @@ assert.strictEqual(A.M.length, 168); assert.strictEqual(A.W.length, 151);
   for (let i = 1; i < A[g].length; i++) assert.ok(A[g][i].rank >= A[g][i - 1].rank, 'ordre par rang ' + g);
   A[g].forEach((a) => { assert.ok(/^[a-z0-9-]+$/.test(a.id)); assert.ok(/^[A-Z]{3}$/.test(a.nat)); assert.ok(a.name.length > 3); });
 });
+assert.ok(A.M.every((a) => /^\d+$/.test(a.fid)) && A.W.every((a) => /^\d+$/.test(a.fid)), 'identifiant FIS pour tous');
+assert.strictEqual(new Set([...A.M, ...A.W].map((a) => a.fid)).size, 319, 'identifiants FIS uniques');
+assert.strictEqual(A.M[0].fid, '190231'); // Odermatt
 assert.strictEqual(A.M[0].id, 'marco-odermatt'); assert.strictEqual(A.W[0].id, 'mikaela-shiffrin');
 
 console.log('Tests d\'import FIS : OK.');

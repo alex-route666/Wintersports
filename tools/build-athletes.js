@@ -17,6 +17,7 @@ const warnings = [];
 });
 const lite = (a) => {
   const o = { id: a.id, name: a.name, fis: a.fis, nat: a.nat, rank: a.rank, pts: a.pts };
+  if (a.fid) o.fid = a.fid;
   if (a.inj) o.inj = 1;
   return o;
 };

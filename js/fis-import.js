@@ -60,11 +60,17 @@
   /**
    * Lit un export HTML de la page FIS « Cup Standings » (classement général).
    * gender : 'M' (une colonne « marque de skis » en plus) ou 'W'.
-   * Retourne { athletes: [{id, fis, name, nat, rank, pts, inj, brand?}], warnings: [] }.
+   * Retourne { athletes: [{id, fis, name, nat, rank, pts, inj, fid?, brand?}], warnings: [] }.
+   fid = identifiant FIS (competitorid), stable même si l'orthographe du nom change.
    */
   function parseFisStandings(html, gender) {
     const blocks = flatten(html).split('|Overall|ALL|');
+    // Identifiants FIS (competitorid) : un lien par ligne du tableau, dans le même ordre.
+    const fids = [];
+    html.replace(/<a[^>]*class="table-row[^"]*"[^>]*href="[^"]*competitorid=(\d+)/g, (m, id) => { fids.push(id); return m; });
     const athletes = [], warnings = [];
+    const fidsOk = fids.length === blocks.length - 1;
+    if (!fidsOk && fids.length) warnings.push(`Identifiants FIS ignorés : ${fids.length} liens pour ${blocks.length - 1} lignes`);
     for (let i = 0; i < blocks.length - 1; i++) {
       const seg = blocks[i].split('|');
       let k = seg.length - 1;
@@ -82,6 +88,7 @@
         continue;
       }
       const a = { id: idOf(fis), fis, name: displayName(fis), nat, rank, pts, inj };
+      if (fidsOk && fids.length) a.fid = fids[i];
       if (gender === 'M') a.brand = brand;
       athletes.push(a);
     }
