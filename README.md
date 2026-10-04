@@ -53,3 +53,6 @@ Calendrier : Wikipédia FR (version du 12/09/2026) et programme officiel des Mon
 ## Photos des skieurs
 Photos FIS (médias) hébergées par firstskisport.com. `tools/add-fss.js` ajoute l'identifiant du site à `js/athletes.js` (158/168 messieurs, 142/151 dames ; les autres, surtout des athlètes marqués « # », gardent leurs initiales).
 Sur ton ordinateur : `npm i sharp` puis `node tools/fetch-photos.js` remplit `img/athletes/<id>.jpg` (240 px). Ensuite `git add img && git commit && git push`.
+
+### Photos via Wikimedia Commons (remplace Firstskisport, qui bloque les téléchargements)
+`npm i sharp && node tools/fetch-wikidata-photos.js` (dans Codespaces) : cherche chaque skieur sur Wikidata (identifiant FIS, puis nom), enregistre `img/athletes/<id>.jpg`, `tools/photo-credits.json` et `credits.html`. Les photos déjà présentes ne sont pas écrasées : pour ajouter un portrait à la main, déposer `img/athletes/<id>.jpg`.

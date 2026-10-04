@@ -271,3 +271,4 @@ button, select, input { font: inherit; color: inherit; }
 .grid--taken thead th:first-child, .grid--taken tfoot th { left: 0; z-index: 3; }
 
 .credits { max-width: 1080px; margin: 0 auto; padding: 0 16px 14px; font-size: .85rem; color: var(--encre-douce); }
+.credits a{color:inherit}
