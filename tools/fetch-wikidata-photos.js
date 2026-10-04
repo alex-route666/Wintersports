@@ -16,7 +16,7 @@ const DELAY = parseInt(process.env.DELAY || '400', 10);
 const UA = 'SkiGameFantasy/1.0 (https://github.com/alex-route666/Wintersports; photos de skieurs)';
 const root = path.join(__dirname, '..');
 const outDir = path.join(root, 'img', 'athletes');
-const credFile = path.join(__dirname, 'photo-credits.json');
+const CR = require('./credits.js');
 const force = process.argv.includes('--force');
 const byName = !process.argv.includes('--no-name');
 fs.mkdirSync(outDir, { recursive: true });
@@ -81,24 +81,10 @@ async function save(a, file, how, credits) {
   return true;
 }
 
-function writeCredits(credits) {
-  fs.writeFileSync(credFile, JSON.stringify(credits, null, 1));
-  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  const rows = Object.entries(credits).sort((x, y) => x[1].name.localeCompare(y[1].name)).map(([, c]) =>
-    `<tr><td>${esc(c.name)}</td><td>${esc(c.author)}</td><td>${esc(c.license)}</td><td><a href="${esc(c.page)}">source</a></td></tr>`).join('\n');
-  fs.writeFileSync(path.join(root, 'credits.html'), `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Crédits photos – Ski game</title>
-<style>body{font:16px/1.5 system-ui,sans-serif;max-width:860px;margin:0 auto;padding:24px 16px;background:#fbf8ef;color:#1b2b44}table{border-collapse:collapse;width:100%}td,th{padding:6px 8px;border-bottom:1px solid #d8cfb8;text-align:left;font-size:14px}a{color:#a93a2c}</style></head><body>
-<p><a href="./">← Retour au jeu</a></p><h1>Crédits photos</h1>
-<p>Portraits issus de Wikimedia Commons, recadrés et redimensionnés. Les autres skieurs sont affichés avec leurs initiales ou une photo ajoutée par l'organisateur.</p>
-<table><thead><tr><th>Skieur</th><th>Auteur</th><th>Licence</th><th>Fichier</th></tr></thead><tbody>
-${rows}
-</tbody></table></body></html>`);
-}
-
 (async () => {
   const all = [...data.M, ...data.W];
   const todo = all.filter((a) => force || !fs.existsSync(path.join(outDir, `${a.id}.jpg`)));
-  const credits = fs.existsSync(credFile) ? JSON.parse(fs.readFileSync(credFile, 'utf8')) : {};
+  const credits = CR.load();
   console.log(`${all.length - todo.length} déjà présentes (gardées), ${todo.length} à chercher.`);
   let nFid = 0, nName = 0; const missing = [];
   const withFid = todo.filter((a) => a.fid);
@@ -113,7 +99,7 @@ ${rows}
     } catch (e) { console.log(`  ✗ ${a.name} : ${e.message}`); missing.push(a.name); }
     const done = nFid + nName + missing.length; if (done % 25 === 0) console.log(`… ${done} / ${todo.length}`);
   }
-  writeCredits(credits);
+  CR.save(credits);
   console.log(`\nPhotos enregistrées : ${nFid} par identifiant FIS, ${nName} par nom. Sans photo : ${missing.length}.`);
   if (missing.length) console.log('Sans photo : ' + missing.join(', '));
   console.log('Crédits : credits.html mis à jour.');

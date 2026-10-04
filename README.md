@@ -56,3 +56,6 @@ Sur ton ordinateur : `npm i sharp` puis `node tools/fetch-photos.js` remplit `im
 
 ### Photos via Wikimedia Commons (remplace Firstskisport, qui bloque les téléchargements)
 `npm i sharp && node tools/fetch-wikidata-photos.js` (dans Codespaces) : cherche chaque skieur sur Wikidata (identifiant FIS, puis nom), enregistre `img/athletes/<id>.jpg`, `tools/photo-credits.json` et `credits.html`. Les photos déjà présentes ne sont pas écrasées : pour ajouter un portrait à la main, déposer `img/athletes/<id>.jpg`.
+
+### Photos via Olympedia (skieurs passés par les Jeux 2014-2026)
+`node tools/fetch-olympedia-photos.js --dry` compte les skieurs retrouvés ; sans `--dry`, télécharge les portraits (stockage d'images d'Olympedia) dans `img/athletes/`, sans écraser les photos déjà présentes, et met à jour `credits.html`.
