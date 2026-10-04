@@ -46,9 +46,11 @@ const genderOf = (html) => { const t = (html.match(/<h1 class="event_title">([^<
     try { html = await get(`${SITE}/results/${id}`); } catch (e) { if (e instanceof Refused) { console.log('\nOlympedia refuse : ' + e.message + '\nOn s\'arrête là (rien n\'est perdu, relance plus tard).'); break; } throw e; }
     if (!html) { console.log(`  page ${id} introuvable`); continue; }
     const g = genderOf(html);
-    if (g) O.parseResults(html).forEach((r) => { if (!found[g].has(r.fss)) found[g].set(r.fss, r); });
+    const rows = g ? O.parseResults(html) : [];
+    rows.forEach((r) => { if (!found[g].has(r.fss)) found[g].set(r.fss, r); });
     if (START.includes(id)) O.parseSameGames(html).forEach((x) => todo.push(x));
-    console.log(`page ${id} : ${g || 'mixte, ignorée'} (${seen.size} pages lues)`);
+    console.log(`page ${id} : ${g || 'mixte, ignorée'}, ${rows.length} skieurs lus (${seen.size} pages lues)`);
+    if (g && !rows.length) console.log('   ⚠ aucun skieur lu : début de la page → ' + (html.match(/<table[\s\S]{0,300}/) || [html.slice(0, 200)])[0].replace(/\s+/g, ' '));
   }
   // 2. Appariement
   const credits = CR.load();
