@@ -31,12 +31,10 @@ Page statique, sans connexion Google ni base de données pour l'instant.
 - `js/athletes.js` : liste des skieurs (168 messieurs, 151 dames), générée à partir des classements FIS 2025-26. Ne pas modifier à la main.
 - `js/fis-import.js` : lecture des pages FIS « Cup Standings » enregistrées en HTML, noms, identifiants, fusion avec alertes d'orthographe.
 - `tools/build-athletes.js` : régénère `js/athletes.js` (`node tools/build-athletes.js messieurs.html dames.html`).
-- `js/specialists.js` : liste des « spécialistes » de chaque course (bulle « Spécialistes » sous chaque course du desk). Généré, ne pas modifier à la main. Vide tant que l'import n'a pas été lancé (la bulle n'apparaît alors pas).
-- `tools/specialists.js` : lecture des pages Firstskisport (calendrier, classement d'une course) et calcul des listes. `tools/make-specialists-browser.js` génère `tools/specialists-browser.js` ; `tools/build-specialists.js` écrit `js/specialists.js`.
 - `js/demo.js` : joueurs, choix et résultats **fictifs** (les skieurs, eux, sont réels).
 - `js/app.js`, `css/style.css` : interface. Typographies : Bricolage Grotesque et Instrument Sans (Google Fonts).
 
-Tests : `node tests/game.test.js`, `node tests/fis-import.test.js` et `node tests/specialists.test.js`.
+Tests : `node tests/game.test.js` et `node tests/fis-import.test.js`.
 
 ## Photos des skieurs
 
@@ -45,17 +43,6 @@ Déposer une photo par skieur dans `img/athletes/`, nommée avec l'identifiant d
 - Format conseillé : carré ou portrait, visage centré en haut, 300 × 300 px minimum.
 - Sans fichier, l'interface affiche les initiales sur fond de couleur (bleu pour les messieurs, rouge pour les dames).
 - La photo est en couleur pour un skieur déjà choisi et en noir et blanc s'il est encore libre (onglet « Athlètes pris »).
-
-## Spécialistes d'une course (bulle info)
-
-Sous chaque course, un bouton « Spécialistes » liste ceux qui réussissent le mieux à cette station dans cette discipline (messieurs ou dames).
-Règle : **moyenne de points par départ** (un abandon vaut 0) sur les **5 dernières saisons**, **au moins 2 départs**, seulement parmi les skieurs de la liste du jeu (donc en activité). La moyenne par départ, et non le cumul, évite d'avantager ceux qui courent depuis longtemps ; les 2 départs minimum évitent qu'un seul exploit d'un jeune écrase la liste. Seules les courses de Coupe du monde comptent (pas les Jeux ni les Mondiaux). Les Mondiaux de Crans-Montana n'ont pas de bulle (pas d'historique).
-
-Mise à jour (à refaire avant chaque desk, ~25 min) :
-1. `node tools/make-specialists-browser.js` (option `--last 2027` pour inclure la saison 2026/27 en cours, `--seasons 5`) génère `tools/specialists-browser.js`.
-2. Ouvrir une page de https://firstskisport.com/alpine/, coller le contenu de `tools/specialists-browser.js` dans la console du navigateur : le script lit les calendriers puis les classements des courses concernées (une requête toutes les 4 s, il patiente si le site demande de ralentir et reprend s'il est recollé dans le même onglet), et télécharge `fss-history.json`.
-3. `node tools/build-specialists.js fss-history.json` écrit `js/specialists.js` et signale les courses sans liste (nouvelle station ou nom différent sur le site : ajouter un alias dans `HILL_ALIAS` de `tools/specialists.js`).
-4. `git add js/specialists.js && git commit && git push`.
 
 ## À venir
 
