@@ -14,26 +14,31 @@ const code = `/* Ski game – à coller dans la console du navigateur, sur une p
     return (b) => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }; })();
   const enc = new TextEncoder(), files = [], missing = [];
   const u16 = (v) => [v & 255, v >> 8 & 255], u32 = (v) => [v & 255, v >> 8 & 255, v >> 16 & 255, v >>> 24];
+  const DELAY = 1200, WAIT = 45000, sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  let last = 0;
+  async function get(u) { // une requête à la fois, espacée ; si le site dit « trop de requêtes » (429), on patiente puis on réessaie
+    for (let k = 1; k <= 8; k++) {
+      const gap = DELAY - (Date.now() - last); if (gap > 0) await sleep(gap);
+      last = Date.now();
+      try {
+        const r = await fetch(u);
+        if (r.status === 429 || r.status === 403) { console.log('Le site demande de ralentir (' + r.status + '), pause de ' + (WAIT * k / 1000) + ' s…'); await sleep(WAIT * k); continue; }
+        return r;
+      } catch (e) { await sleep(2000); }
+    }
+    return null;
+  }
   async function viaPage(key) {
     const w = key.endsWith('w'), id = key.replace('w', '');
-    for (const u of ['/alpine/athlete.php?id=' + id + (w ? '&g=w' : ''), '/alpine/athlete.php?id=' + id]) {
-      try {
-        const r = await fetch(u); if (!r.ok) continue;
-        const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
-        const hit = [...doc.querySelectorAll('img')].map((i) => i.getAttribute('src') || '').find((x) => /img\\/alpine\\/\\d{4}\\/\\d+\\.(png|jpe?g|webp)/i.test(x));
-        if (hit) { const ir = await fetch(new URL(hit, location.origin + '/alpine/').href); if (ir.ok) return await ir.blob(); }
-      } catch (e) {}
-    }
-    return null;
+    const r = await get('/alpine/athlete.php?id=' + id + (w ? '&g=w' : ''));
+    if (!r || !r.ok) return null;
+    const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+    const hit = [...doc.querySelectorAll('img')].map((i) => i.getAttribute('src') || '').find((x) => /img\\/alpine\\/\\d{4}\\/\\d+\\.(png|jpe?g|webp)/i.test(x));
+    if (!hit) return null;
+    const ir = await get(new URL(hit, location.origin + '/alpine/').href);
+    return ir && ir.ok ? await ir.blob() : null;
   }
-  async function grab(key) {
-    const b = await viaPage(key); if (b) return b;
-    const fss = key.replace('w', '');
-    for (const y of YEARS) for (const ext of ['png', 'jpg']) {
-      try { const r = await fetch('/img/alpine/' + y + '/' + fss + '.' + ext); if (r.ok && /^image\\//.test(r.headers.get('content-type') || '')) return await r.blob(); } catch (e) {}
-    }
-    return null;
-  }
+  async function grab(key) { return await viaPage(key); }
   async function square(blob) {
     const bmp = await createImageBitmap(blob), s = Math.min(bmp.width, bmp.height);
     const c = document.createElement('canvas'); c.width = c.height = SIZE;
@@ -45,7 +50,7 @@ const code = `/* Ski game – à coller dans la console du navigateur, sur une p
   for (const id of ids) {
     const b = await grab(MAP[id]);
     if (b) { try { files.push({ name: id + '.jpg', data: await square(b) }); } catch (e) { missing.push(id); } } else missing.push(id);
-    if (++n % 20 === 0) console.log(n + ' / ' + ids.length + ' traités, ' + files.length + ' photos');
+    if (++n % 10 === 0) console.log(n + ' / ' + ids.length + ' traités, ' + files.length + ' photos');
   }
   const parts = [], central = []; let off = 0;
   files.forEach((f) => {
