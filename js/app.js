@@ -2,6 +2,7 @@
 (function () {
   'use strict';
   const D = window.SKI_DATA, G = window.SKI_GAME, DEMO = window.SKI_DEMO, ATHL = window.SKI_ATHLETES;
+  const SPEC = window.SKI_SPECIALISTS || { races: {} };
   const TZ = 'Europe/Paris';
   const STORE = 'skigame.maquette.picks';
   const PHOTO_DIR = 'img/athletes/'; // une photo par skieur : img/athletes/<id>.jpg (voir README)
@@ -21,6 +22,7 @@
     results: {},
     tq: '',        // recherche dans « Athlètes pris »
     tf: 'all',     // filtre : all | taken | free
+    spec: new Set(), // courses dont la bulle « Spécialistes » est ouverte
   };
 
   /* ---------- Utilitaires ---------- */
@@ -144,15 +146,38 @@
   }
   const sessionOf = (race) => [...D.SESSIONS, D.WORLDS].find((s) => s.races.includes(race.id));
 
+  /* ---------- Bulle « Spécialistes » : qui réussit le mieux sur cette course (historique Firstskisport) ---------- */
+  const num1 = (x) => x.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+  const seasonSpan = () => { const s = SPEC.seasons || []; return s.length ? `${Math.min(...s) - 1}/${String(Math.min(...s)).slice(2)} à ${Math.max(...s) - 1}/${String(Math.max(...s)).slice(2)}` : ''; };
+  function specButton(race) {
+    if (!SPEC.races[race.id]) return '';
+    const open = state.spec.has(race.id);
+    return `<button type="button" class="spec-btn${open ? ' is-open' : ''}" data-spec="${race.id}" aria-expanded="${open}" aria-controls="spec-${race.id}">Spécialistes</button>`;
+  }
+  function specPanel(race, session) {
+    const s = SPEC.races[race.id];
+    if (!s || !state.spec.has(race.id)) return '';
+    const used = G.usedInDesk(session.desk, race.gender, myPicks(), race.id);
+    const rows = s.list.map(([id, starts, avg, podiums, best]) => `<li class="spec__row">${avatarOf(id, 'sm')}
+      <span class="spec__name">${esc(nameOf(id))}${used.has(id) ? ' <em class="spec__taken">déjà pris</em>' : ''}</span>
+      <span class="spec__stats"><b>${num1(avg)}</b> pts/départ<span> · ${plural(starts, 'départ', 'départs')}${podiums ? ' · ' + plural(podiums, 'podium', 'podiums') : ''}${best ? ' · meilleur : ' + ordinal(best) : ''}</span></span></li>`).join('');
+    return `<div class="race__spec spec" id="spec-${race.id}">
+      <p class="spec__head"><strong>Spécialistes · ${esc(placeLabel(race))}, ${esc(discLabel(race))}, ${esc(genderLabel(race).toLowerCase())}</strong></p>
+      <ol class="spec__list">${rows}</ol>
+      <p class="spec__note">Moyenne de points par départ à cette station dans cette discipline, saisons ${seasonSpan()} (un abandon compte 0), au moins ${SPEC.minStarts || 2} départs. Source : Firstskisport.</p>
+    </div>`;
+  }
+
   /* ---------- Courses d'une session (vue « Mon desk ») ---------- */
   function raceRow(race, session) {
     const d = at(race.date);
     return `<li class="race">
       <div class="race__date"><span class="race__num">${F_NUM.format(d)}</span><span class="race__mo">${F_WD.format(d)} ${F_MO.format(d)}</span></div>
       <div class="race__info"><strong class="race__place">${esc(placeLabel(race))}</strong>
-        <span class="race__tags"><span class="gender gender--${race.gender}">${genderLabel(race)}</span>${discBadge(race)}</span></div>
+        <span class="race__tags"><span class="gender gender--${race.gender}">${genderLabel(race)}</span>${discBadge(race)}</span>${specButton(race)}</div>
       <div class="race__pick">${locked(session) ? pickSummary(state.me, race) : pickEditor(race, session)}</div>
       <div class="race__out">${outcome(race, state.me)}</div>
+      ${specPanel(race, session)}
     </li>`;
   }
   function sessionCard(session, indexLabel) {
@@ -425,6 +450,14 @@
     if (tab) { setTab(tab.dataset.tab); return; }
     const go = e.target.closest('[data-goto]');
     if (go) { setTab(go.dataset.goto === '0' ? 'w' : go.dataset.goto); return; }
+    const sp = e.target.closest('[data-spec]');
+    if (sp) {
+      const id = sp.dataset.spec;
+      if (state.spec.has(id)) state.spec.delete(id); else state.spec.add(id);
+      const y = window.scrollY; renderPanel(); window.scrollTo({ top: y });
+      const again = document.querySelector(`[data-spec="${id}"]`); if (again) again.focus({ preventScroll: true });
+      return;
+    }
     const tf = e.target.closest('[data-tf]');
     if (tf) { state.tf = tf.dataset.tf; applyTakenFilter(); return; }
     const sub = e.target.closest('[data-sub]');
